@@ -228,6 +228,9 @@ class ImmuneCongestionControl:
                         )
                         self.handle_packet(packet, sat)
 
+        # 记录时延数据
+        self.metrics.record_delay_metrics()
+
     def _collect_metrics(self):
         """收集性能指标"""
         current_time = time.time() - self.simulation_start_time
@@ -451,6 +454,7 @@ class ImmuneCongestionControl:
 
         # 生成可视化图表
         self.generate_performance_plots(timestamp)
+        self.metrics.generate_delay_plot(timestamp)
 
         logger.info(f"Performance report generated: {report_path}")
         return report_path
