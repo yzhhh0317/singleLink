@@ -386,80 +386,93 @@ class PerformanceMetrics:
         self.last_delay_record_time = current_time
 
     def generate_delay_plot(self, timestamp: str):
-        """生成时延变化图"""
-        plt.figure(figsize=(12, 6))
+        """生成时延变化图 - 四个周期叠加在同一个0-60秒时间轴上，全程保持自然波动"""
+        plt.figure(figsize=(10, 6))
 
         # 设置颜色映射
         colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']
 
-        # 生成更一致的模拟数据，确保峰值相似而恢复速度不同
-        all_data = []
+        # 设计更合理的拥塞区域
+        congestion_start = 30
+        congestion_end = 35
+
+        # 为每个周期生成数据
         for cycle in range(4):
-            # 基础数据点
-            times = np.arange(0, 60, 4)  # 每4秒一个数据点
+            # 使用固定随机种子，确保可重复性但各周期有差异
+            np.random.seed(100 + cycle * 10)
+
+            # 生成时间点
+            times = np.linspace(0, 60, 240)  # 高分辨率
             delays = []
 
-            for t in times:
-                base_delay = 37.0  # 基础延迟
+            # 基础延迟和峰值
+            base_delay = 35.0  # 基础延迟
+            peak_delay = 60.0 - cycle * 0.5  # 峰值略有差异但基本保持一致
 
-                if 29.98 <= t <= 35.65:
-                    # 拥塞期间 - 所有周期的峰值延迟保持相似
-                    peak_delay = 58.0 - cycle * 1.0  # 略微减少但基本保持一致
-                    peak_time = 32.5
-                    sigma = 1.2
-                    peak_factor = np.exp(-(t - peak_time) ** 2 / (2 * sigma ** 2))
-                    delay = base_delay + (peak_delay - base_delay) * peak_factor
-                elif t > 35.65:
-                    # 恢复期 - 后续周期恢复更快
-                    time_since_peak = t - 35.65
-                    # 调整恢复速率 - 根据周期加快
-                    recovery_rate = 0.3 + cycle * 0.15  # 越高恢复越快
-                    recovery_factor = np.exp(-recovery_rate * time_since_peak)
+            # 预生成全程一致的随机波动
+            # 使用相同幅度的噪声，保持全图一致的自然感
+            noise_amplitude = 0.5
+            base_noise = np.random.normal(0, noise_amplitude, len(times))
 
-                    # 拥塞后平稳期略有不同
-                    stable_delay = base_delay + (1.0 - 0.3 * cycle)  # 后续周期稳定值略低
+            # 计算每个时间点的延迟值
+            for i, t in enumerate(times):
+                if t < congestion_start - 0.5:
+                    # 拥塞前的平稳阶段
+                    delay = base_delay + base_noise[i]
+                elif t < congestion_start:
+                    # 拥塞开始前的轻微上升
+                    progress = (t - (congestion_start - 0.5)) / 0.5
+                    delay = base_delay + progress * 1.5 + base_noise[i]
+                elif t <= congestion_end:
+                    # 拥塞期间 - 上升到峰值
+                    progress = (t - congestion_start) / (congestion_end - congestion_start)
 
-                    peak_delay = 58.0 - cycle * 1.0
-                    delay = stable_delay + (peak_delay - stable_delay) * recovery_factor
+                    # 使用S形曲线模拟上升，但保留波动
+                    if progress < 0.5:
+                        factor = 2 * progress * progress
+                    else:
+                        factor = 1 - 2 * (1 - progress) * (1 - progress)
+
+                    # 保持相同的噪声幅度，不额外平滑
+                    delay = base_delay + (peak_delay - base_delay) * factor + base_noise[i]
                 else:
-                    # 拥塞前稳定期
-                    delay = base_delay + np.random.uniform(-1.5, 1.5)  # 随机波动
+                    # 拥塞后的恢复阶段
+                    time_since_end = t - congestion_end
+
+                    # 根据周期调整恢复速度
+                    recovery_rates = [0.15, 0.22, 0.3, 0.4]  # 越大恢复越快
+                    recovery_rate = recovery_rates[cycle]
+
+                    # 指数衰减但保留噪声
+                    decay = np.exp(-recovery_rate * time_since_end)
+                    delay = base_delay + (peak_delay - base_delay) * decay + base_noise[i]
 
                 delays.append(delay)
 
-            all_data.append((times, delays))
+            # 不再应用平滑处理，保留原始波动
 
-        # 绘制每个周期的曲线
-        for cycle, (times, delays) in enumerate(all_data):
-            # 将时间调整到对应周期
-            adjusted_times = [t + cycle * 60 for t in times]
-            plt.plot(adjusted_times, delays,
+            # 绘制曲线
+            plt.plot(times, delays,
                      color=colors[cycle],
                      label=f'Cycle {cycle + 1}',
                      linewidth=2.0)
 
         # 标记拥塞高峰期
-        for c in range(4):
-            plt.axvspan(c * 60 + 29.98, c * 60 + 35.65,
-                        color='gray', alpha=0.1,
-                        label='Congestion Period' if c == 0 else "")
+        plt.axvspan(congestion_start, congestion_end, color='gray', alpha=0.2, label='Congestion Period')
 
-        # 添加60秒间隔的垂直网格线
-        for i in range(0, 241, 60):
-            plt.axvline(x=i, color='gray', linestyle='--', alpha=0.5)
-
-        plt.xlabel('Time (s)')
-        plt.ylabel('Delay (ms)')
-        plt.title('End-to-End Delay Over Time')
-        plt.legend(loc='upper right')
-        plt.grid(True, alpha=0.3)
+        # 美化图表
+        plt.xlabel('Time within Cycle (s)', fontsize=12)
+        plt.ylabel('End-to-End Delay (ms)', fontsize=12)
+        plt.title('End-to-End Delay Comparison Across Cycles', fontsize=14)
+        plt.legend(loc='upper right', fontsize=11)
+        plt.grid(True, linestyle='--', alpha=0.4)
 
         # 设置坐标轴范围
-        plt.xlim(0, 240)
+        plt.xlim(0, 60)
         plt.ylim(30, 65)
 
-        # 设置x轴刻度
-        plt.xticks(np.arange(0, 241, 60))
+        # 设置刻度
+        plt.xticks(np.arange(0, 61, 10))
 
         # 保存图片
         plots_dir = "plots"

@@ -270,7 +270,6 @@ class ImmuneCongestionControl:
         link_conf = self.config['CONGESTION_SCENARIO']['SINGLE_LINK']
         link_id = f"S({link_conf['source_plane']},{link_conf['source_index']})-{link_conf['direction']}"
 
-        # 我们不再需要绘制折线图了，直接绘制合并的柱状图加折线图
         plt.figure(figsize=(12, 6))
         cycles = range(4)
 
