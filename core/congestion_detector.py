@@ -41,6 +41,18 @@ class CongestionDetector:
         link_id = f"S{link.source_id}-S{link.target_id}"
         occupancy = link.queue_occupancy
         current_state = 'normal'  # 初始化默认状态
+        current_time = time.time()
+        cycle = self.get_current_cycle()
+
+        # 检测到拥塞状态变化时记录时间点
+        if occupancy >= self.congestion_threshold:
+            if link_id in self.state_history and self.state_history[link_id][-1] != 'congestion':
+                # 获取周期内相对时间
+                relative_time = (current_time - self.detection_start_time) % 60
+
+                # 将此时间点传递给metrics
+                if hasattr(self, 'metrics'):
+                    self.metrics.record_congestion_detection(cycle, link_id, relative_time)
 
         # 初始化状态历史和统计
         if link_id not in self.state_history:

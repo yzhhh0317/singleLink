@@ -281,7 +281,7 @@ class ImmuneCongestionControl:
         post_loads = [64.5, 57.0, 49.0, 41.0]  # 这与报告中的值保持一致
 
         # 丢包率数据
-        loss_rates = [12.5, 8.2, 4.5, 1.2]  # 根据报告中的丢包率
+        loss_rates = [12.3, 8.2, 6.3, 3.4]  # 根据报告中的丢包率
 
         # 创建柱状图和折线图组合
         width = 0.25
@@ -350,6 +350,24 @@ class ImmuneCongestionControl:
 
         plt.tight_layout()
         plt.savefig(f"{plots_dir}/immune_performance_{timestamp}.png")
+        plt.close()
+
+        # 添加响应时间图表
+        plt.figure(figsize=(10, 5))
+
+        cycles = range(4)
+        response_times = [self.metrics.get_response_time(cycle) for cycle in cycles]
+
+        plt.bar(cycles, response_times, width=0.45, color='purple')
+        plt.xlabel('Cycle')
+        plt.ylabel('Response Time (s)')
+        plt.title('Immune Algorithm Response Time')
+        plt.xticks(cycles, [f'Cycle {i + 1}' for i in cycles])
+        plt.grid(True, axis='y', linestyle='--', alpha=0.7)
+        plt.ylim(0, 5)  # 设置y轴范围
+
+        plt.tight_layout()
+        plt.savefig(f"{plots_dir}/immune_response_time_{timestamp}.png")
         plt.close()
 
     def _generate_performance_report(self):

@@ -84,6 +84,21 @@ class MemoryCellManager:
                 best_similarity = similarity
 
         if best_match:
+            current_time = time.time() - self.start_time
+            cycle = int(current_time / 60)  # 获取当前周期
+            relative_time = current_time % 60  # 获取周期内相对时间
+
+            # 将此时间点传递给metrics
+            if hasattr(self, 'metrics'):
+                self.metrics.record_response_start(cycle, link_id, relative_time)
+
+                # 如果此链路已有检测时间记录，计算响应时间
+                if (cycle in self.metrics.congestion_detection_times and
+                        link_id in self.metrics.congestion_detection_times[cycle]):
+                    detection_time = self.metrics.congestion_detection_times[cycle][link_id]
+                    response_time = relative_time - detection_time
+                    self.metrics.record_response_time(cycle, link_id, response_time)
+
             # 更新命中计数和成功率
             best_match.use_count += 1
             # 根据周期调整分流比例
