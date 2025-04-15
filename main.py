@@ -323,27 +323,20 @@ class ImmuneCongestionControl:
 
         # 计算命中率和响应时间
         hit_rates = [0.0, 50.0, 70.0, 83.33]  # 根据报告中的值
-        response_times = [4.58, 3.43, 2.71, 1.72]  # 根据报告中的值
 
         ax1 = plt.gca()
-        ax2 = ax1.twinx()
 
-        l1 = ax1.plot(cycles, hit_rates, 'b-o', label='Memory Hit Rate')
-        l2 = ax2.plot(cycles, response_times, 'r-o', label='Response Time')
+        l1 = ax1.plot(cycles, hit_rates, 'b-o')
 
         ax1.set_xlabel('Cycle')
-        ax1.set_ylabel('Memory Hit Rate (%)', color='b')
-        ax2.set_ylabel('Response Time (s)', color='r')
+        ax1.set_ylabel('Memory Hit Rate (%)')
 
         ax1.set_xticks(cycles)
         ax1.set_xticklabels([f'Cycle {i + 1}' for i in cycles])
 
         ax1.set_ylim(0, 100)
-        ax2.set_ylim(0, 5)
 
-        lines = l1 + l2
-        labels = [l.get_label() for l in lines]
-        ax1.legend(lines, labels, loc='center right')
+        lines = l1
 
         ax1.grid(True)
         plt.title('Immune Algorithm Performance')
